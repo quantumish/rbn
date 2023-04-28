@@ -5,7 +5,7 @@ description = "Add a short description here"
 authors = [
     { name = "quantumish", email = "freifeld.david@gmail.com" }
 ]
-dependencies = ["parse~=1.19.0", "pyvis~=0.3.2", "annotated_types~=0.4.0", "bitarray~=2.7.3"]
+dependencies = ["pyvis~=0.3.2", "annotated_types~=0.4.0", "bitarray~=2.7.3"]
 readme = "README.md"
 requires-python = ">= 3.8"
 license = { text = "MIT" }
@@ -16,4 +16,4 @@ build-backend = "hatchling.build"
 
 [tool.rye]
 managed = true
-dev-dependencies = ["isort~=6.0.0b2", "black~=23.3.0", "py-spy~=0.4.0.dev2", "mypy~=1.2.0", "pdoc~=13.1.1", "flameprof~=0.4"]
+dev-dependencies = ["isort~=6.0.0b2", "black~=23.3.0", "mypy~=1.2.0", "pdoc~=13.1.1", "flameprof~=0.4", "line_profiler~=4.0.3"]

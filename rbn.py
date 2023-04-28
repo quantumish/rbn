@@ -36,7 +36,7 @@ class NetParseWarning(Warning):
     pass
 
 class RBN:
-    def __init__(self, path: Union[str, os.PathLike]):
+    def __init__(self, path: Union[str, os.PathLike], log_histories: bool = False):
         """Initializes an RBN from a .net file.
 
         NOTE: Assumes there are no spaces in the quoted labels.
@@ -50,6 +50,9 @@ class RBN:
             num_vtxs = int(num_vtxs[10:]) # HACK kinda
 
             self.nodes = [None] * num_vtxs
+            if log_histories:
+                self.hists = [[]] * num_vtxs
+                
             for i in range(num_vtxs):
                 vals = f.readline().strip().split(" ")
                 if len(vals) != 5:
@@ -113,7 +116,7 @@ class RBN:
             new_nodes[i].act = self.nodes[i].rule[rule_idx]            
         self.nodes = new_nodes
         
-    def show_pyvis(self):
+    def show_pyvis(self, name="rbn"):
         net = pyvis.network.Network()
         for i, n in enumerate(self.nodes):
             net.add_node(i, label=n.label, value=n.act)
@@ -123,9 +126,7 @@ class RBN:
                 net.add_edge(i, self.edges[idx])        
             
         net.toggle_physics(True)
-        net.show("rbn.html", notebook=False)
+        net.show(f"{name}.html", notebook=False)
 
 rbn = RBN("./net/01.net")
-rbn.show_pyvis()
 rbn.sync_update()
-rbn.show_pyvis()
