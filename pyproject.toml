@@ -5,7 +5,7 @@ description = "Add a short description here"
 authors = [
     { name = "quantumish", email = "freifeld.david@gmail.com" }
 ]
-dependencies = ["parse~=1.19.0", "pyvis~=0.3.2", "annotated_types~=0.4.0"]
+dependencies = ["parse~=1.19.0", "pyvis~=0.3.2", "annotated_types~=0.4.0", "bitarray~=2.7.3"]
 readme = "README.md"
 requires-python = ">= 3.8"
 license = { text = "MIT" }
