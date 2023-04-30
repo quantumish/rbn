@@ -1,7 +1,7 @@
 import csv
 from dataclasses import dataclass
 import warnings
-from typing import Annotated, Union, List, NewType
+from typing import Annotated, Union, List, NewType, Callable, Optional
 from annotated_types import Gt, MultipleOf
 import os
 import random
@@ -22,7 +22,7 @@ BitArray = NewType("BitArray", bitarray)
 
 @dataclass
 class Node:
-    rule: BitArray
+    rule: Union[BitArray, Callable[[List[Bit]], Bit]]
     act: Bit # TODO should really be pulled out into its own array
     label: str
     x: float
@@ -36,7 +36,12 @@ class NetParseWarning(Warning):
     pass
 
 class RBN:
-    def __init__(self, path: Union[str, os.PathLike], log_histories: bool = False):
+    def __init__(
+            self,
+            path: Union[str, os.PathLike],
+            log_histories: bool = False,
+            func: Optional[Callable[List[Bit], Bit]] = None
+    ):
         """Initializes an RBN from a .net file.
 
         NOTE: Assumes there are no spaces in the quoted labels.
@@ -59,7 +64,7 @@ class RBN:
                     raise NetParseError(f"Node {i} line is incomplete")
                 
                 self.nodes[i] = Node(
-                    bitarray(),
+                    bitarray() if func is None else func,
                     random.getrandbits(1),
                     vals[1].strip("\""), # HACK we're not handling quotes correctly
                     *map(float, vals[2:])
@@ -88,11 +93,12 @@ class RBN:
                     self.offsets.append(len(self.edges)-1)
                     prev = dst
 
-        for i, locs in enumerate(pairwise(self.offsets, len(self.edges))):
-            num_in = locs[1]-locs[0]            
-            bytelen = (2**num_in)//8 if num_in > 2 else 1            
-            self.nodes[i].rule.frombytes(os.urandom(bytelen))           
-
+        if func is None:
+            for i, locs in enumerate(pairwise(self.offsets, len(self.edges))):
+                num_in = locs[1]-locs[0]            
+                bytelen = (2**num_in)//8 if num_in > 2 else 1            
+                self.nodes[i].rule.frombytes(os.urandom(bytelen))           
+            
     def async_update(self):
         node_idx = random.randint(0, len(self.nodes))
 
