@@ -158,7 +158,14 @@ class RBN:
         x,y,z = get_data()
 
         sc = ax.scatter(x,y,z,c=[i.act for i in rbn.nodes], cmap=cmap)
+
+        for i, node in enumerate(rbn.nodes):
+            # annotate every 5 nodes
+            if i % 20 == 0:
+                ax.text(node.x, node.y, node.z, node.label)
+
         plt.legend(*sc.legend_elements(), bbox_to_anchor=(1.05, 1), loc=2)
+
 
         def tick(_):
             self.sync_update()
@@ -175,6 +182,8 @@ class RBN:
 
 rbn = RBN("./net/01.net", 0.8)
 rbn.run()
+
+rbn.nodes[0]
 # rbn.show_pyvis()
 
 
