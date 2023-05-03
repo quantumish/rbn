@@ -1,7 +1,7 @@
 import csv
 from dataclasses import dataclass
 import warnings
-from typing import Annotated, Union, List, NewType, Callable, Optional
+from typing import Annotated, Union, List, NewType, Callable, Optional, Tuple
 from annotated_types import Gt, MultipleOf
 import os
 import random
@@ -46,7 +46,7 @@ class RBN:
     ----------
     path : os.PathLike
         The path to the .net file to parse containing a brain map.
-    threshold : float
+    threshold : Tuple[float, float]
         The integer threshold for update; 0.8 in paper
     epsilon : float, optional
         How much to fluctuate increase the threshold per node
@@ -59,7 +59,7 @@ class RBN:
 
     def __init__(self,
                  path: Union[str, os.PathLike],
-                 threshold: float,
+                 threshold: Tuple[float, float],
                  epsilon: float = 0,
                  log_histories: bool = False):
         """Initializes an RBN from a .net file.
@@ -69,7 +69,8 @@ class RBN:
         NOTE: .net files are one-indexed, yet this function converts everything to 0-indexed
         """
 
-        self.threshold = threshold
+        self.threshold_lower = threshold[0]
+        self.threshold_upper = threshold[1]
         self.epsilon = epsilon
 
         with open(path, "r") as f:
@@ -121,12 +122,14 @@ class RBN:
 
     def sync_update(self):
         new_nodes = self.nodes.copy()
-        threshold = self.threshold
+        threshold_lower = self.threshold_lower
+        threshold_upper = self.threshold_upper
         for i, locs in enumerate(pairwise(self.offsets, len(self.edges))):
             inc_acts = []
             for j in range(*locs):
                 inc_acts.append(self.nodes[self.edges[j]].act*self.weights[self.edges[j]])
-            new_nodes[i].act = 1 if sum(inc_acts) >= threshold else 0
+            new_nodes[i].act = 1 if (sum(inc_acts) > threshold_lower and
+                                     sum(inc_acts) < threshold_upper) else 0
             threshold += self.epsilon
         self.nodes = new_nodes
         
@@ -177,29 +180,5 @@ class RBN:
 
         plt.show()
 
-# cmap = ListedColormap(sns.color_palette("rocket", 2).as_hex())
-# cmap(1)
-
-rbn = RBN("./net/01.net", 0.8)
+rbn = RBN("./net/01.net", [0.5, 0.8])
 rbn.run()
-
-rbn.nodes[0]
-# rbn.show_pyvis()
-
-
-# sc.set_xdata
-
-# plt.show()
-
-# ax.scatter(
-
-
-# rbn.nodes[0]
-# sns.sc
-# # rbn.edges[:10]
-# # rbn.offsets[:10]
-
-# # next(pairwise(rbn.offsets, len(rbn.edges)))
-
-
-# # t = bitarray()
