@@ -13,6 +13,7 @@ import seaborn as sns
 from mpl_toolkits.mplot3d import Axes3D
 from matplotlib.colors import ListedColormap
 import matplotlib.animation
+import random
 
 def pairwise(iterable, last=None):
     it = iter(iterable)
@@ -61,7 +62,8 @@ class RBN:
                  path: Union[str, os.PathLike],
                  threshold: Tuple[float, float],
                  epsilon: float = 0,
-                 log_histories: bool = False):
+                 log_histories: bool = False,
+                 weight_seeds: Tuple[float, float] = [-1,1]):
         """Initializes an RBN from a .net file.
 
         NOTE: Assumes there are no spaces in the quoted labels.
@@ -69,6 +71,7 @@ class RBN:
         NOTE: .net files are one-indexed, yet this function converts everything to 0-indexed
         """
 
+        self.edges = []
         self.threshold_lower = threshold[0]
         self.threshold_upper = threshold[1]
         self.epsilon = epsilon
@@ -118,7 +121,8 @@ class RBN:
                     prev = dst
 
             # seed random weights for the connection edges
-            self.weights = [random.uniform(0,1) for _ in range(len(self.edges))]
+            self.weights = [random.uniform(weight_seeds[0],
+                                           weight_seeds[1]) for _ in range(len(self.edges))]
 
     def sync_update(self):
         new_nodes = self.nodes.copy()
@@ -172,7 +176,6 @@ class RBN:
 
         def tick(_):
             self.sync_update()
-
             sc.set_facecolor([cmap(i.act) for i in rbn.nodes])
 
         ani = matplotlib.animation.FuncAnimation(fig, tick, 
