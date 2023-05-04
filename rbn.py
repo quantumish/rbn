@@ -14,6 +14,8 @@ from mpl_toolkits.mplot3d import Axes3D
 from matplotlib.colors import ListedColormap
 import matplotlib.animation
 import random
+from matplotlib import colors
+import time
 
 def pairwise(iterable, last=None):
     it = iter(iterable)
@@ -134,7 +136,8 @@ class RBN:
                 inc_acts.append(self.nodes[self.edges[j]].act*self.weights[self.edges[j]])
             new_nodes[i].act = 1 if (sum(inc_acts) > threshold_lower and
                                      sum(inc_acts) < threshold_upper) else 0
-            threshold += self.epsilon
+            threshold_upper += self.epsilon
+            threshold_lower += self.epsilon
         self.nodes = new_nodes
         
     def show_pyvis(self, name="rbn"):
@@ -152,7 +155,8 @@ class RBN:
     def run(self):
         fig = plt.figure()
         ax = Axes3D(fig)
-        cmap = ListedColormap(sns.color_palette("rocket", 2).as_hex())
+        # cmap = ListedColormap(sns.color_palette("Spectral", 2).as_hex())
+        cmap = colors.ListedColormap(['red', 'green'])
         fig.add_axes(ax)
 
         def get_data():
@@ -164,24 +168,47 @@ class RBN:
         
         x,y,z = get_data()
 
-        sc = ax.scatter(x,y,z,c=[i.act for i in rbn.nodes], cmap=cmap)
+        sc = ax.scatter(x,y,z, cmap=cmap)
 
+        edges_src = []
+        edges_dest = []
+
+        get = lambda node:(self.nodes[node].x, self.nodes[node].y, self.nodes[node].z)
+        for i, locs in enumerate(pairwise(self.offsets, len(self.edges))):
+            for idx in range(*locs):
+                # x,y,z = zip(get(i), get(idx))
+                x,y,z = zip(get(i), get(self.edges[idx]))
+                ax.plot3D(x,y,z, color='gray',linewidth=0.4)
+                
         for i, node in enumerate(rbn.nodes):
             # annotate every 5 nodes
             if i % 20 == 0:
-                ax.text(node.x, node.y, node.z, node.label)
+                pass
+                # ax.text(node.x, node.y, node.z, node.label)
 
         plt.legend(*sc.legend_elements(), bbox_to_anchor=(1.05, 1), loc=2)
 
 
         def tick(_):
             self.sync_update()
-            sc.set_facecolor([cmap(i.act) for i in rbn.nodes])
+            # sc.set_color([cmap(i.act) for i in rbn.nodes])
+            sc.set_color([cmap(i.act) for i in rbn.nodes])
+
+            return sc,
 
         ani = matplotlib.animation.FuncAnimation(fig, tick, 
-                            interval=40, blit=False)
+                                                 interval=500, blit=False)
 
         plt.show()
+        ani.pause()
+        time.sleep(5)
+        ani.resume()
 
-rbn = RBN("./net/01.net", [0.5, 0.8])
+rbn = RBN("./net/01.net", [-0.1, 0.1], epsilon=0)
 rbn.run()
+
+# cmap(0)
+
+# cmap = ListedColormap(sns.color_palette("vlag", 2).as_hex())
+# cmap(1)
+# # 
