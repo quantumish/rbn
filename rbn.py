@@ -152,6 +152,19 @@ class RBN:
         net.toggle_physics(True)
         net.show(f"{name}.html")
 
+    def load_state_file(self, f):
+        with open(f, 'r') as df:
+            reader = csv.reader(df, delimiter=" ")
+            data = list(reader)
+
+        node_activations = [[i[0], int(i[1])] for i in data[:83]]
+        edge_activations = [[float(j) for j in i] for i in data[83:]]
+
+        self.weights = [i[2] for i in edge_activations]
+        for i, n in enumerate(self.nodes):
+            assert n.label == node_activations[i][0]
+            n.act = node_activations[i][1]
+
     def run(self):
         fig = plt.figure()
         ax = Axes3D(fig)
@@ -205,29 +218,5 @@ class RBN:
         ani.resume()
 
 rbn = RBN("./net/01.net", [-0.1, 0.1], epsilon=0)
+rbn.load_state_file("./net/01.weights")
 rbn.run()
-
-with open("./net/01.weights", 'r') as df:
-    reader = csv.reader(df, delimiter=" ")
-    data = list(reader)
-
-node_activations = data[:83]
-edge_activations = data[83:]
-
-
-
-# parameter for negative activation probability
-# negative activations are usually stronger than promotional signals
-
-
-# cmap(0)
-
-# cmap = ListedColormap(sns.color_palette("vlag", 2).as_hex())
-# cmap(1)
-# # 
-
-# spikes are a bad model
-# transition matrix is depressingly lineary, let's fix that
-# trying to chase loopy behavior: boolean functions
-# future work/better models
-
