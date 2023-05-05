@@ -207,8 +207,27 @@ class RBN:
 rbn = RBN("./net/01.net", [-0.1, 0.1], epsilon=0)
 rbn.run()
 
+with open("./net/01.weights", 'r') as df:
+    reader = csv.reader(df, delimiter=" ")
+    data = list(reader)
+
+node_activations = data[:83]
+edge_activations = data[83:]
+
+
+
+# parameter for negative activation probability
+# negative activations are usually stronger than promotional signals
+
+
 # cmap(0)
 
 # cmap = ListedColormap(sns.color_palette("vlag", 2).as_hex())
 # cmap(1)
 # # 
+
+# spikes are a bad model
+# transition matrix is depressingly lineary, let's fix that
+# trying to chase loopy behavior: boolean functions
+# future work/better models
+
