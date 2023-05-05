@@ -192,18 +192,27 @@ class RBN:
                 # x,y,z = zip(get(i), get(idx))
                 x,y,z = zip(get(i), get(self.edges[idx]))
                 ax.plot3D(x,y,z, color='gray',linewidth=0.4)
+
+
                 
-        for i, node in enumerate(rbn.nodes):
-            # annotate every 5 nodes
-            if i % 20 == 0:
-                pass
-                # ax.text(node.x, node.y, node.z, node.label)
 
         plt.legend(*sc.legend_elements(), bbox_to_anchor=(1.05, 1), loc=2)
 
 
+        text = {}
+
         def tick(_):
             self.sync_update()
+
+            for i, node in enumerate(rbn.nodes):
+                # annotate every 5 nodes
+                if node.act == 1:
+                    text[i] = ax.text(node.x, node.y, node.z, node.label,
+                                      size=5)
+                elif text.get(i):
+                    text[i].remove()
+                    text[i] = None
+
             # sc.set_color([cmap(i.act) for i in rbn.nodes])
             sc.set_color([cmap(i.act) for i in rbn.nodes])
 
