@@ -17,6 +17,8 @@ import random
 from matplotlib import colors
 import time
 
+import numpy as np
+
 def pairwise(iterable, last=None):
     it = iter(iterable)
     a = next(it, last)
@@ -51,21 +53,15 @@ class RBN:
         The path to the .net file to parse containing a brain map.
     threshold : Tuple[float, float]
         The integer threshold for update; 0.8 in paper
-    epsilon : float, optional
-        How much to fluctuate increase the threshold per node
-        "it is possible to increase this value by 0.01 every row of the matrix,
-         thus having fluctuating values (which correspond to different values between
-         the nodes)."
-    log_sistories : bool, optional
-        IDFK
+
     """
 
     def __init__(self,
                  path: Union[str, os.PathLike],
                  threshold: Tuple[float, float],
-                 epsilon: float = 0,
-                 log_histories: bool = False,
-                 weight_seeds: Tuple[float, float] = [-1,1]):
+                 connection_eps: float = 0.01,
+                 connection_threshold: float = 0.8,
+                 weight_seeds: Tuple[float, float] = [0.51, 0.288]):
         """Initializes an RBN from a .net file.
 
         NOTE: Assumes there are no spaces in the quoted labels.
@@ -76,7 +72,6 @@ class RBN:
         self.edges = []
         self.threshold_lower = threshold[0]
         self.threshold_upper = threshold[1]
-        self.epsilon = epsilon
 
         with open(path, "r") as f:
             num_vtxs = f.readline()
@@ -85,8 +80,6 @@ class RBN:
             num_vtxs = int(num_vtxs[10:]) # HACK kinda
 
             self.nodes = [None] * num_vtxs
-            if log_histories:
-                self.hists = [[]] * num_vtxs
                 
             for i in range(num_vtxs):
                 vals = f.readline().strip().split(" ")
@@ -123,8 +116,19 @@ class RBN:
                     prev = dst
 
             # seed random weights for the connection edges
-            self.weights = [random.uniform(weight_seeds[0],
-                                           weight_seeds[1]) for _ in range(len(self.edges))]
+            self.weights = [np.random.normal(*weight_seeds)
+                            for _ in range(len(self.edges))]
+            # we descritize the edge seeds:
+            # "Starting from a [edge] threshold value of 0.8, it is possible to increase
+            #  this value by 0.01 every row of the matrix, thus having fluctuating
+            #  values (which correspond to different values between the nodes)." -- the paper
+            epsilon = 0
+            for index, i in enumerate(self.weights):
+                if index % 83 == 0 and index != 0:
+                    epsilon += connection_eps
+                self.weights[index] = 1 if i+epsilon >= connection_threshold else 0
+
+            breakpoint()
 
     def sync_update(self):
         new_nodes = self.nodes.copy()
@@ -136,8 +140,6 @@ class RBN:
                 inc_acts.append(self.nodes[self.edges[j]].act*self.weights[self.edges[j]])
             new_nodes[i].act = 1 if (sum(inc_acts) > threshold_lower and
                                      sum(inc_acts) < threshold_upper) else 0
-            threshold_upper += self.epsilon
-            threshold_lower += self.epsilon
         self.nodes = new_nodes
         
     def show_pyvis(self, name="rbn"):
@@ -194,8 +196,6 @@ class RBN:
                 ax.plot3D(x,y,z, color='gray',linewidth=0.4)
 
 
-                
-
         plt.legend(*sc.legend_elements(), bbox_to_anchor=(1.05, 1), loc=2)
 
 
@@ -207,8 +207,8 @@ class RBN:
             for i, node in enumerate(rbn.nodes):
                 # annotate every 5 nodes
                 if node.act == 1:
-                    text[i] = ax.text(node.x, node.y, node.z, node.label,
-                                      size=5)
+                    pass
+                    # text[i] = ax.text(node.x, node.y, node.z, node.label, size=5)
                 elif text.get(i):
                     text[i].remove()
                     text[i] = None
@@ -226,6 +226,8 @@ class RBN:
         time.sleep(5)
         ani.resume()
 
-rbn = RBN("./net/01.net", [-0.1, 0.1], epsilon=0)
-rbn.load_state_file("./net/01.weights")
+rbn = RBN("./net/01.net", threshold=[0,3],
+          connection_eps=0.01, connection_threshold=0.8,
+          weight_seeds=[0.51, 0.288])
+# rbn.load_state_file("./net/01.weights")
 rbn.run()
