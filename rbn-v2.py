@@ -175,6 +175,16 @@ class Network:
 
         return steps
 
+    # sample n steps
+    def sample(self, n):
+        samples = np.empty((0, len(self.nodevec)))
+
+        for _ in range(n):
+            self.step()
+            samples = np.vstack([samples, self.nodevec])
+
+        return samples
+
     # animation tooling
     def run(self):
         fig = plt.figure()
@@ -223,15 +233,26 @@ class Network:
         time.sleep(5)
         ani.resume()
 
+# fun experimental tasks!
+def threshold_search(start,end):
+    for a in range(start,end):
+        for b in range(a,end):
+            print(f"trying... [{a}, {b}]")
+            n = Network(CONNECTOME_FILE, EDGE_FILE, [a,b])
+            print(f"a: {a}, b: {b}, steps: {n.step_to_fixed()}")
 
-for a in range(2,10):
-    for b in range(a,10):
-        print(f"trying... [{a}, {b}]")
-        n = Network(CONNECTOME_FILE, EDGE_FILE, [a,b])
-        print(f"a: {a}, b: {b}, steps: {n.step_to_fixed()}")
+def covariance_heatmap(a,b,steps=500):
+    n = Network(CONNECTOME_FILE, EDGE_FILE, [a,b])
+    samples = n.sample(steps)
+    node_behaviors = samples.transpose()
+    covariance = np.cov(node_behaviors)
+    sns.heatmap(covariance, cmap=sns.color_palette("coolwarm", as_cmap=True),center=0)
+    plt.show()
 
-n = Network(CONNECTOME_FILE, EDGE_FILE, [1,8])
-n.run()
+# threshold_search(2,10)
+covariance_heatmap(1,8,5000)
+
+# samples[0]
 
 # n.adjacency @ (n.nodevec * 0.87)
 # n.step()
