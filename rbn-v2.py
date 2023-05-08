@@ -17,6 +17,13 @@ from mpl_toolkits.mplot3d import Axes3D
 from matplotlib.colors import ListedColormap
 
 CONNECTOME_FILE = "./net/01.net"
+EDGE_FILE = "./net/01.edge"
+ACTION_EXECUTION = [0,1,0,1,0,0,0,1,1,1,0,0,0,0,1,
+                    0,0,0,1,0,1,0,0,0,0,0,0,1,0,0,
+                    0,0,0,0,1,0,0,0,1,0,1,0,0,0,0,
+                    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+                    0,0,1,1,0,0,0,0,0,0,0,0,0,0,1,
+                    0,0,0,1,0,0,0]
 
 @dataclass
 class Node:
@@ -30,19 +37,26 @@ class Network:
 
     def __init__(self,
                  connectome_file, # input connectome file
+                 edge_file=None, # input edge file, or random
                  node_quantization_thresholds=[1,5], # a,b threshold used for quantization of nodes/update
                  edge_quantization_threshold=0.8, # threshold to quantize adj. matrix value from 0 into 1
-                 edge_quantization_epsilon=0.01, # the epsilon +0.01 of the above, see note below
-                 edge_init_params=[0.51, 0.288]): # mean, std of raw connection edges
+                 edge_quantization_epsilon=0.00, # the epsilon +0.01 of the above, see note below
+                 edge_init_params=[0.51, 0.288], # mean, std of raw connection edges
+                 node_weight=0.87): # this number is just multiplied to the matrix "we chose to set nodes' weight" 
 
         with open(connectome_file, 'r') as df:
             reader = csv.reader(df, delimiter=" ")
             data = list(reader)
 
         # seperate vertice parsing and edge parsing
-        num_verticies = int(data[0][1])
-        nodes = data[1:num_verticies+1]
-        vertices = data[num_verticies+2:]
+        # subtract 1 for both: we don't care (i.e. adjacency not provided for) brain stem
+        num_verticies = int(data[0][1])-1 # subtract 1
+        nodes = data[1:num_verticies+1] # we actually subtract 1 here
+        vertices = data[num_verticies+3:]
+
+        # if the last line is blank, drop it
+        if len(vertices[-1]) == 0:
+            vertices.pop(-1)
 
         # parse the nodes
         self.nodes = []
@@ -57,43 +71,60 @@ class Network:
 
         # and now, construct the raw connection matrix
         raw_edges = np.zeros((num_verticies,
-                            num_verticies))
+                              num_verticies))
 
         # create a list of vertices
         vertices = [(int(i[0])-1, int(i[1])-1) for i in vertices]
 
-        # register a raw conection matrix
-        for a,b in vertices:
-            # set raw base weights to 1
+        # vert #83 (ID 82) is brain stem; we don't care
+        vertices = list(filter(lambda x:x[1] != 82, vertices))
 
-            # "Areas have been connected by an adjacency matrix
-            #  of 82 rows and 82 columns, whose values are comprised
-            #  between 0 and 1, with an average connection value of
-            #  0.51 and a standard deviation of 0.288 for each node."
+        self.__edge_quantization_threshold = edge_quantization_threshold
+        self.__edge_quantization_epsilon = edge_quantization_epsilon
+        self.__node_quantization_thresholds = node_quantization_thresholds
 
-            # recall we write matricies (row, col)
-            # so the output dimension is first
-            # also :music: one indexingggg
-            raw_edges[b][a] = np.random.normal(0.51, 0.288)
+        if edge_file:
+            self.read_edge_file(edge_file)
+        else:
+            # register a raw conection matrix
+            for a,b in vertices:
+                # set raw base weights to 1
+
+                # "Areas have been connected by an adjacency matrix
+                #  of 82 rows and 82 columns, whose values are comprised
+                #  between 0 and 1, with an average connection value of
+                #  0.51 and a standard deviation of 0.288 for each node."
+
+                # recall we write matricies (row, col)
+                # so the output dimension is first
+                # also :music: one indexingggg
+                raw_edges[b][a] = np.random.normal(0.51, 0.288)
+
+            # store the adjacency matrix
+            self.adjacency = self.__quantize_edges(raw_edges)
+        self.vertices = vertices
+        self.node_weight = node_weight
+
+    def __quantize_edges(self, raw):
+        num_verticies = raw.shape[0]
 
         # descritize matrix by with 
         # "Starting from a threshold value of 0.8, it is possible to increase
         #  this value by 0.01 every row of the matrix, thus having fluctuating
         #  values (which correspond to different values between the nodes)."
         edge_thresholds = np.full((num_verticies,
-                                   num_verticies), edge_quantization_threshold)
+                                   num_verticies),
+                                  self.__edge_quantization_threshold)
+
         epsilon = 0
         for i in range(num_verticies):
             for j in range(num_verticies):
                 edge_thresholds[i][j] += epsilon
-            epsilon += edge_quantization_epsilon
+
+            epsilon += self.__edge_quantization_epsilon
 
         # compute the final adjacency matrix
-        adjacency_matrix = (raw_edges > edge_thresholds).astype(int)
-
-        # store the adjacency matrix
-        self.adjacency = adjacency_matrix
-        self.vertices = vertices
+        return (raw > edge_thresholds).astype(int)
 
     # node activation vector
     @property
@@ -114,10 +145,35 @@ class Network:
         for (node, i) in zip(self.nodes, nodevec):
             node.act = int(i)
 
+    # read .edge file type, containing the brodmann adjancies
+    def read_edge_file(self, edge_file):
+        with open(edge_file, 'r') as df:
+            f = csv.reader(df, delimiter="\t")
+            data = np.array([[float(i) for i in j] for j in list(f)])
+        self.adjacency = self.__quantize_edges(data)
+
     # synchronous update
     def step(self):
-        next = self.adjacency@self.nodevec
-        self.set(next)
+        next = self.adjacency@(self.nodevec*self.node_weight)
+
+        # threshold quantization
+        a,b = self.__node_quantization_thresholds 
+        on_p = (a < next) & (next < b)
+
+        self.set(on_p)
+
+    # calculate steps until fixed
+    def step_to_fixed(self):
+        steps = 0
+        cur = self.nodevec
+        self.step()
+
+        while not (cur == self.nodevec).all():
+            cur = self.nodevec 
+            self.step()
+            steps +=1
+
+        return steps
 
     # animation tooling
     def run(self):
@@ -167,6 +223,18 @@ class Network:
         time.sleep(5)
         ani.resume()
 
-n = Network(CONNECTOME_FILE)
+
+for a in range(2,10):
+    for b in range(a,10):
+        print(f"trying... [{a}, {b}]")
+        n = Network(CONNECTOME_FILE, EDGE_FILE, [a,b])
+        print(f"a: {a}, b: {b}, steps: {n.step_to_fixed()}")
+
+n = Network(CONNECTOME_FILE, EDGE_FILE, [1,8])
 n.run()
+
+# n.adjacency @ (n.nodevec * 0.87)
+# n.step()
+# n.nodevec
+
 
