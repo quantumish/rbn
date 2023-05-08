@@ -249,13 +249,8 @@ def covariance_heatmap(a,b,steps=500):
     sns.heatmap(covariance, cmap=sns.color_palette("coolwarm", as_cmap=True),center=0)
     plt.show()
 
-# threshold_search(2,10)
-covariance_heatmap(1,8,5000)
-
-# samples[0]
-
-# n.adjacency @ (n.nodevec * 0.87)
-# n.step()
-# n.nodevec
-
+def run_simulation(a,b):
+    n = Network(CONNECTOME_FILE, EDGE_FILE,
+                [a,b])
+    n.run()
 
